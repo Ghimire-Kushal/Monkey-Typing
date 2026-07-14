@@ -1,0 +1,39 @@
+export default function TypingArea({
+  words,
+  currentWordIndex,
+  currentInput,
+  mistyped,
+}: {
+  words: string[];
+  currentWordIndex: number;
+  currentInput: string;
+  mistyped: boolean;
+}) {
+  return (
+    <div className="rounded-2xl bg-white border border-black/10 p-6 text-xl leading-relaxed font-mono tracking-wide select-none">
+      {words.map((word, i) => {
+        let className = "text-black/30";
+        if (i < currentWordIndex) className = "text-black/25";
+        if (i === currentWordIndex)
+          className = mistyped ? "text-mistake" : "text-accent";
+
+        return (
+          <span key={i} className={`${className} mr-2`}>
+            {i === currentWordIndex ? (
+              <>
+                <span className={mistyped ? "text-mistake" : "text-accent"}>
+                  {currentInput}
+                </span>
+                <span className="text-black/40">
+                  {word.slice(currentInput.length)}
+                </span>
+              </>
+            ) : (
+              word
+            )}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
