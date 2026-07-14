@@ -23,13 +23,13 @@ export default function Leaderboard({
               : "border-black/10 bg-white"
           }`}
         >
-          <div className="flex items-center justify-between text-sm mb-2">
-            <span className="font-medium">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm mb-2">
+            <span className="font-medium truncate max-w-full">
               <span className="text-black/40 mr-2">#{i + 1}</span>
               {entry.name}
               {entry.finished && <span className="ml-1 text-accent">✓</span>}
             </span>
-            <span className="text-black/60">
+            <span className="text-black/60 whitespace-nowrap">
               {entry.wpm} wpm · {entry.accuracy}% · {entry.score} pts
             </span>
           </div>

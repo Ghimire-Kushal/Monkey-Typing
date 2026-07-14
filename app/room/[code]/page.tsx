@@ -60,7 +60,7 @@ export default function RoomPage({
 
   useEffect(() => {
     const channel = supabase.channel(`room:${roomCode}`, {
-      config: { presence: { key: playerId } },
+      config: { presence: { key: playerId }, broadcast: { self: true } },
     });
     channelRef.current = channel;
 
