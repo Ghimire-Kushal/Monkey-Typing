@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { generateRoomCode } from "@/lib/words";
+
+const NAME_STORAGE_KEY = "typerace-player-name";
 
 export default function Home() {
   const router = useRouter();
@@ -10,10 +12,16 @@ export default function Home() {
   const [joinCode, setJoinCode] = useState("");
   const [mode, setMode] = useState<"create" | "join">("create");
 
+  useEffect(() => {
+    const savedName = localStorage.getItem(NAME_STORAGE_KEY);
+    if (savedName) setName(savedName);
+  }, []);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
 
+    localStorage.setItem(NAME_STORAGE_KEY, name.trim());
     const params = new URLSearchParams({ name: name.trim() });
 
     if (mode === "create") {

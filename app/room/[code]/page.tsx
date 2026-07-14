@@ -2,7 +2,6 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { generateRaceText } from "@/lib/words";
@@ -87,6 +86,22 @@ export default function RoomPage({
 
     channel.on("broadcast", { event: "race_over" }, () => {
       setStatus("finished");
+    });
+
+    channel.on("broadcast", { event: "reset" }, () => {
+      setStatus("lobby");
+      setTargetText("");
+      setRaceStartAt(null);
+      setCountdown(COUNTDOWN_SECONDS);
+      setCurrentInput("");
+      setWordIndex(0);
+      setScore(0);
+      setMistyped(false);
+      setCorrectWords(0);
+      setTotalAttempted(0);
+      setCorrectChars(0);
+      setFinished(false);
+      setLeaderboard({});
     });
 
     channel.subscribe(async (subStatus) => {
@@ -229,6 +244,7 @@ export default function RoomPage({
   }
 
   useEffect(() => {
+    if (status !== "lobby") return;
     updateLeaderboard({
       playerId,
       name,
@@ -239,7 +255,15 @@ export default function RoomPage({
       finished: false,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [status]);
+
+  function handlePlayAgain() {
+    channelRef.current?.send({
+      type: "broadcast",
+      event: "reset",
+      payload: {},
+    });
+  }
 
   const leaderboardEntries = Object.values(leaderboard);
 
@@ -314,13 +338,18 @@ export default function RoomPage({
             <Leaderboard entries={leaderboardEntries} currentPlayerId={playerId} />
           </div>
 
-          {status === "finished" && (
-            <Link
-              href="/"
+          {status === "finished" && isHost && (
+            <button
+              onClick={handlePlayAgain}
               className="rounded-xl bg-accent text-white py-3 font-medium hover:opacity-90 transition-opacity text-center"
             >
               Play again
-            </Link>
+            </button>
+          )}
+          {status === "finished" && !isHost && (
+            <p className="text-center text-black/50 text-sm">
+              Waiting for the host to start another race…
+            </p>
           )}
         </div>
       )}
