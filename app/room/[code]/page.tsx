@@ -30,6 +30,7 @@ export default function RoomPage({
   const playerId = playerIdRef.current;
 
   const [status, setStatus] = useState<RoomStatus>("lobby");
+  const [wordCount, setWordCount] = useState(40);
   const [players, setPlayers] = useState<Player[]>([]);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [targetText, setTargetText] = useState("");
@@ -136,7 +137,7 @@ export default function RoomPage({
 
   function handleStart() {
     if (!channelRef.current) return;
-    const text = generateRaceText(40);
+    const text = generateRaceText(wordCount);
     const startAt = Date.now() + COUNTDOWN_SECONDS * 1000;
     channelRef.current.send({
       type: "broadcast",
@@ -293,12 +294,28 @@ export default function RoomPage({
             </ul>
           </div>
           {isHost && (
-            <button
-              onClick={handleStart}
-              className="rounded-xl bg-accent text-white py-3 font-medium hover:opacity-90 transition-opacity"
-            >
-              Start race
-            </button>
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center justify-between rounded-xl bg-white border border-black/10 px-4 py-3">
+                <span className="text-sm text-black/60">Word count</span>
+                <select
+                  value={wordCount}
+                  onChange={(e) => setWordCount(Number(e.target.value))}
+                  className="rounded-lg border border-black/10 bg-white px-2 py-1 text-sm outline-none focus:border-accent"
+                >
+                  {[15, 25, 40, 60, 100].map((count) => (
+                    <option key={count} value={count}>
+                      {count} words
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                onClick={handleStart}
+                className="rounded-xl bg-accent text-white py-3 font-medium hover:opacity-90 transition-opacity"
+              >
+                Start race
+              </button>
+            </div>
           )}
         </div>
       )}
