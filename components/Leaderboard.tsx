@@ -27,6 +27,9 @@ export default function Leaderboard({
             <span className="font-medium truncate max-w-full">
               <span className="text-black/40 mr-2">#{i + 1}</span>
               {entry.name}
+              {entry.streak >= 3 && (
+                <span className="ml-1 text-orange-500">🔥{entry.streak}</span>
+              )}
               {entry.finished && <span className="ml-1 text-accent">✓</span>}
             </span>
             <span className="text-black/60 whitespace-nowrap">

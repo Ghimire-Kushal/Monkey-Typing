@@ -14,6 +14,7 @@ export interface LeaderboardEntry {
   accuracy: number;
   progress: number;
   finished: boolean;
+  streak: number;
 }
 
 export interface StartPayload {

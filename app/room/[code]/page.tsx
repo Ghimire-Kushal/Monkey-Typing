@@ -10,6 +10,12 @@ import Leaderboard from "@/components/Leaderboard";
 import TypingArea from "@/components/TypingArea";
 
 const COUNTDOWN_SECONDS = 3;
+const STREAK_STEP = 3; // every N correct words in a row raises the multiplier
+const MAX_MULTIPLIER = 5;
+
+function multiplierForStreak(streak: number) {
+  return Math.min(1 + Math.floor(streak / STREAK_STEP), MAX_MULTIPLIER);
+}
 
 export default function RoomPage({
   params,
@@ -31,6 +37,8 @@ export default function RoomPage({
 
   const [status, setStatus] = useState<RoomStatus>("lobby");
   const [wordCount, setWordCount] = useState(40);
+  const [textMode, setTextMode] = useState<"random" | "custom">("random");
+  const [customText, setCustomText] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [targetText, setTargetText] = useState("");
@@ -39,6 +47,7 @@ export default function RoomPage({
   const [currentInput, setCurrentInput] = useState("");
   const [wordIndex, setWordIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [mistyped, setMistyped] = useState(false);
   const [correctWords, setCorrectWords] = useState(0);
   const [totalAttempted, setTotalAttempted] = useState(0);
@@ -91,12 +100,15 @@ export default function RoomPage({
 
     channel.on("broadcast", { event: "reset" }, () => {
       setStatus("lobby");
+      setTextMode("random");
+      setCustomText("");
       setTargetText("");
       setRaceStartAt(null);
       setCountdown(COUNTDOWN_SECONDS);
       setCurrentInput("");
       setWordIndex(0);
       setScore(0);
+      setStreak(0);
       setMistyped(false);
       setCorrectWords(0);
       setTotalAttempted(0);
@@ -137,7 +149,10 @@ export default function RoomPage({
 
   function handleStart() {
     if (!channelRef.current) return;
-    const text = generateRaceText(wordCount);
+    const text =
+      textMode === "custom" && customText.trim()
+        ? customText.trim()
+        : generateRaceText(wordCount);
     const startAt = Date.now() + COUNTDOWN_SECONDS * 1000;
     channelRef.current.send({
       type: "broadcast",
@@ -146,7 +161,12 @@ export default function RoomPage({
     });
   }
 
-  async function finishRace(finalScore: number, finalWpm: number, finalAccuracy: number) {
+  async function finishRace(
+    finalScore: number,
+    finalWpm: number,
+    finalAccuracy: number,
+    finalStreak: number
+  ) {
     if (finished) return;
     setFinished(true);
 
@@ -161,6 +181,7 @@ export default function RoomPage({
         accuracy: finalAccuracy,
         progress: 1,
         finished: true,
+        streak: finalStreak,
       } satisfies LeaderboardEntry,
     });
 
@@ -189,12 +210,15 @@ export default function RoomPage({
     if (value.endsWith(" ")) {
       const typedWord = value.trim();
       const isCorrect = typedWord === target;
-      const newScore = isCorrect ? score + 1 : score - 1;
+      const newStreak = isCorrect ? streak + 1 : 0;
+      const multiplier = multiplierForStreak(streak);
+      const newScore = isCorrect ? score + multiplier : score - 1;
       const newCorrectWords = isCorrect ? correctWords + 1 : correctWords;
       const newTotalAttempted = totalAttempted + 1;
       const newCorrectChars = isCorrect ? correctChars + target.length : correctChars;
 
       setScore(newScore);
+      setStreak(newStreak);
       setCorrectWords(newCorrectWords);
       setTotalAttempted(newTotalAttempted);
       setCorrectChars(newCorrectChars);
@@ -219,6 +243,7 @@ export default function RoomPage({
         accuracy,
         progress,
         finished: nextIndex >= words.length,
+        streak: newStreak,
       });
 
       channelRef.current?.send({
@@ -232,11 +257,12 @@ export default function RoomPage({
           accuracy,
           progress,
           finished: nextIndex >= words.length,
+          streak: newStreak,
         } satisfies LeaderboardEntry,
       });
 
       if (nextIndex >= words.length) {
-        finishRace(newScore, wpm, accuracy);
+        finishRace(newScore, wpm, accuracy, newStreak);
       }
     } else {
       setCurrentInput(value);
@@ -254,6 +280,7 @@ export default function RoomPage({
       accuracy: 100,
       progress: 0,
       finished: false,
+      streak: 0,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
@@ -295,23 +322,56 @@ export default function RoomPage({
           </div>
           {isHost && (
             <div className="flex flex-col gap-3">
-              <label className="flex items-center justify-between rounded-xl bg-white border border-black/10 px-4 py-3">
-                <span className="text-sm text-black/60">Word count</span>
-                <select
-                  value={wordCount}
-                  onChange={(e) => setWordCount(Number(e.target.value))}
-                  className="rounded-lg border border-black/10 bg-white px-2 py-1 text-sm outline-none focus:border-accent"
-                >
-                  {[15, 25, 40, 60, 100].map((count) => (
-                    <option key={count} value={count}>
-                      {count} words
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="flex gap-2 rounded-xl bg-white border border-black/10 p-1">
+                {(["random", "custom"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setTextMode(mode)}
+                    className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                      textMode === mode
+                        ? "bg-accent text-white"
+                        : "text-black/60 hover:bg-black/5"
+                    }`}
+                  >
+                    {mode === "random" ? "Random words" : "Custom text"}
+                  </button>
+                ))}
+              </div>
+
+              {textMode === "random" && (
+                <label className="flex items-center justify-between rounded-xl bg-white border border-black/10 px-4 py-3">
+                  <span className="text-sm text-black/60">Word count</span>
+                  <select
+                    value={wordCount}
+                    onChange={(e) => setWordCount(Number(e.target.value))}
+                    className="rounded-lg border border-black/10 bg-white px-2 py-1 text-sm outline-none focus:border-accent"
+                  >
+                    {[15, 25, 40, 60, 100].map((count) => (
+                      <option key={count} value={count}>
+                        {count} words
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {textMode === "custom" && (
+                <label className="flex flex-col gap-2 rounded-xl bg-white border border-black/10 px-4 py-3">
+                  <span className="text-sm text-black/60">Custom passage</span>
+                  <textarea
+                    value={customText}
+                    onChange={(e) => setCustomText(e.target.value)}
+                    placeholder="Paste or type a custom passage for the class to race..."
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-accent font-mono"
+                  />
+                </label>
+              )}
               <button
                 onClick={handleStart}
-                className="rounded-xl bg-accent text-white py-3 font-medium hover:opacity-90 transition-opacity"
+                disabled={textMode === "custom" && !customText.trim()}
+                className="rounded-xl bg-accent text-white py-3 font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Start race
               </button>
@@ -345,6 +405,11 @@ export default function RoomPage({
                 disabled={finished}
                 placeholder="Start typing..."
               />
+              {streak >= STREAK_STEP && (
+                <div className="text-sm text-accent font-medium -mt-4">
+                  🔥 {streak} streak · x{multiplierForStreak(streak)} points
+                </div>
+              )}
             </>
           )}
 
