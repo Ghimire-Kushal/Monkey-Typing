@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -10,6 +10,13 @@ import Leaderboard from "@/components/Leaderboard";
 import TypingArea from "@/components/TypingArea";
 
 const COUNTDOWN_SECONDS = 3;
+const BG_PRESETS = [
+  { name: "Cream", value: "#faf8f4" },
+  { name: "Slate", value: "#1e2530" },
+  { name: "Sky", value: "#eaf3fb" },
+  { name: "Blush", value: "#fbeef0" },
+  { name: "Mint", value: "#eafaf2" },
+];
 const STREAK_STEP = 3; // every N correct words in a row raises the multiplier
 const MAX_MULTIPLIER = 5;
 
@@ -38,6 +45,7 @@ export default function RoomPage({
   const [status, setStatus] = useState<RoomStatus>("lobby");
   const [wordCount, setWordCount] = useState(40);
   const [textMode, setTextMode] = useState<"random" | "custom">("random");
+  const [bgColor, setBgColor] = useState(BG_PRESETS[0].value);
   const [customText, setCustomText] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
@@ -58,7 +66,10 @@ export default function RoomPage({
   const channelRef = useRef<RealtimeChannel | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const words = targetText ? targetText.split(" ") : [];
+  const words = useMemo(
+    () => (targetText ? targetText.split(" ") : []),
+    [targetText]
+  );
 
   const updateLeaderboard = useCallback(
     (entry: LeaderboardEntry) => {
@@ -296,7 +307,10 @@ export default function RoomPage({
   const leaderboardEntries = Object.values(leaderboard);
 
   return (
-    <main className="min-h-screen px-6 py-10 max-w-4xl mx-auto">
+    <main
+      className="min-h-screen px-6 py-10 max-w-4xl mx-auto transition-colors"
+      style={{ background: bgColor }}
+    >
       <div className="flex items-center justify-between mb-8">
         <h1 className="font-serif text-3xl font-semibold text-accent">
           Room {roomCode}
@@ -368,6 +382,32 @@ export default function RoomPage({
                   />
                 </label>
               )}
+              <div className="flex flex-col gap-2 rounded-xl bg-white border border-black/10 px-4 py-3">
+                <span className="text-sm text-black/60">Background</span>
+                <div className="flex items-center gap-2">
+                  {BG_PRESETS.map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setBgColor(preset.value)}
+                      title={preset.name}
+                      className={`h-8 w-8 rounded-full border-2 transition-transform ${
+                        bgColor === preset.value
+                          ? "border-accent scale-110"
+                          : "border-black/10"
+                      }`}
+                      style={{ background: preset.value }}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => setBgColor(e.target.value)}
+                    title="Custom color"
+                    className="h-8 w-8 rounded-full border border-black/10 p-0 overflow-hidden cursor-pointer"
+                  />
+                </div>
+              </div>
               <button
                 onClick={handleStart}
                 disabled={textMode === "custom" && !customText.trim()}
